@@ -1,6 +1,6 @@
 # superagent-sandbox
 
-Empty sandbox repository for dsh-superagent.
+dsh-superagent 的空沙盒仓库。
 
-hello from feishu
-merged by itself
+来自飞书的问候
+由自身合并
