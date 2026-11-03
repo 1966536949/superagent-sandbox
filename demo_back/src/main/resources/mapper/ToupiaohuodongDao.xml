@@ -13,6 +13,10 @@
         <result property="riqi" column="riqi"/>
     </resultMap>
 
+    <select id="selectByIdForUpdate" resultType="com.entity.ToupiaohuodongEntity">
+        SELECT * FROM toupiaohuodong WHERE id = #{id} FOR UPDATE
+    </select>
+
     <select id="selectListVO"
             resultType="com.entity.vo.ToupiaohuodongVO">
         SELECT * FROM toupiaohuodong toupiaohuodong

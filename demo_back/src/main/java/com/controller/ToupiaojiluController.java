@@ -3,13 +3,16 @@ package com.controller;
 import com.annotation.IgnoreAuth;
 import com.baomidou.mybatisplus.mapper.EntityWrapper;
 import com.baomidou.mybatisplus.mapper.Wrapper;
+import com.entity.ToupiaohuodongEntity;
 import com.entity.ToupiaojiluEntity;
 import com.entity.view.ToupiaojiluView;
+import com.service.ToupiaohuodongService;
 import com.service.ToupiaojiluService;
 import com.utils.MPUtil;
 import com.utils.PageUtils;
 import com.utils.R;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -29,6 +32,9 @@ import java.util.*;
 public class ToupiaojiluController {
     @Autowired
     private ToupiaojiluService toupiaojiluService;
+
+    @Autowired
+    private ToupiaohuodongService toupiaohuodongService;
 
 
     /**
@@ -104,21 +110,69 @@ public class ToupiaojiluController {
      * 后端保存
      */
     @RequestMapping("/save")
+    @Transactional(rollbackFor = Exception.class)
     public R save(@RequestBody ToupiaojiluEntity toupiaojilu, HttpServletRequest request) {
-        toupiaojilu.setId(new Date().getTime() + new Double(Math.floor(Math.random() * 1000)).longValue());
-        //ValidatorUtils.validateEntity(toupiaojilu);
-        toupiaojiluService.insert(toupiaojilu);
-        return R.ok();
+        return saveVote(toupiaojilu, request);
     }
 
     /**
      * 前端保存
      */
     @RequestMapping("/add")
+    @Transactional(rollbackFor = Exception.class)
     public R add(@RequestBody ToupiaojiluEntity toupiaojilu, HttpServletRequest request) {
+        return saveVote(toupiaojilu, request);
+    }
+
+    /**
+     * 保存投票记录。同一用户对同一活动只能投一票。
+     * 先按 crossuserid、crossrefid 查重，已有记录时直接拒绝；
+     * 没有记录时写入一条投票记录，并把对应活动的 piaoshu 固定加 1。
+     * 查重、加票和写入记录都在同一个事务中，加票或写记录失败会一起回滚。
+     */
+    private R saveVote(ToupiaojiluEntity toupiaojilu, HttpServletRequest request) {
+        Long crossuserid = toupiaojilu.getCrossuserid();
+        Long crossrefid = toupiaojilu.getCrossrefid();
+        ToupiaohuodongEntity toupiaohuodong = null;
+        if (crossrefid != null) {
+            // 锁定活动行，串行化同一活动的投票，避免并发重复投票和票数丢失
+            toupiaohuodong = toupiaohuodongService.selectByIdForUpdate(crossrefid);
+            if (toupiaohuodong == null) {
+                return R.error("投票活动不存在");
+            }
+        }
+        // 绕过页面直接调用接口时，用当前登录用户补齐 crossuserid
+        if (crossuserid == null && crossrefid != null && request != null) {
+            Object currentUserId = request.getSession() == null ? null : request.getSession().getAttribute("userId");
+            if (currentUserId != null) {
+                crossuserid = Long.valueOf(currentUserId.toString());
+                toupiaojilu.setCrossuserid(crossuserid);
+            }
+        }
+        // 判定依据：同一 crossuserid + crossrefid 已存在投票记录
+        if (crossuserid != null && crossrefid != null) {
+            EntityWrapper<ToupiaojiluEntity> voteWrapper = new EntityWrapper<ToupiaojiluEntity>();
+            voteWrapper.eq("crossuserid", crossuserid);
+            voteWrapper.eq("crossrefid", crossrefid);
+            if (toupiaojiluService.selectCount(voteWrapper) > 0) {
+                // 已经投过票：不写记录，也不修改活动票数
+                return R.error("您已参与过投票！");
+            }
+        }
+        // 没有重复记录时，先把活动票数固定加 1；加票失败则不写入投票记录
+        if (crossrefid != null) {
+            ToupiaohuodongEntity update = new ToupiaohuodongEntity();
+            update.setId(crossrefid);
+            update.setPiaoshu((toupiaohuodong.getPiaoshu() == null ? 0 : toupiaohuodong.getPiaoshu()) + 1);
+            if (!toupiaohuodongService.updateById(update)) {
+                return R.error("投票失败");
+            }
+        }
         toupiaojilu.setId(new Date().getTime() + new Double(Math.floor(Math.random() * 1000)).longValue());
-        //ValidatorUtils.validateEntity(toupiaojilu);
-        toupiaojiluService.insert(toupiaojilu);
+        if (!toupiaojiluService.insert(toupiaojilu)) {
+            // 活动票数已经加过，记录写入失败时抛出异常回滚
+            throw new RuntimeException("投票记录保存失败");
+        }
         return R.ok();
     }
 

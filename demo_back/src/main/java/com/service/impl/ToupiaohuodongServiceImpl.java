@@ -38,6 +38,11 @@ public class ToupiaohuodongServiceImpl extends ServiceImpl<ToupiaohuodongDao, To
     }
 
     @Override
+    public ToupiaohuodongEntity selectByIdForUpdate(Long id) {
+        return baseMapper.selectByIdForUpdate(id);
+    }
+
+    @Override
     public List<ToupiaohuodongVO> selectListVO(Wrapper<ToupiaohuodongEntity> wrapper) {
         return baseMapper.selectListVO(wrapper);
     }
