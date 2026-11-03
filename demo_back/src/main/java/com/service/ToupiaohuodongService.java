@@ -21,6 +21,11 @@ import java.util.Map;
  */
 public interface ToupiaohuodongService extends IService<ToupiaohuodongEntity> {
 
+    /**
+     * 查询活动并锁定该行，用于串行化同一活动的投票
+     */
+    ToupiaohuodongEntity selectByIdForUpdate(Long id);
+
     PageUtils queryPage(Map<String, Object> params);
 
     List<ToupiaohuodongVO> selectListVO(Wrapper<ToupiaohuodongEntity> wrapper);

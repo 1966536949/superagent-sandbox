@@ -406,20 +406,6 @@ export default {
 
     // 提交
     onSubmit() {
-
-
-      var objcross = this.$storage.getObj('crossObj');
-      var table = this.$storage.getObj('crossTable');
-      if (objcross != null) {
-        objcross.piaoshu = parseFloat(objcross.piaoshu) + parseFloat(this.ruleForm.piaoshu)
-      }
-      this.$http({
-        url: `${table}/update`,
-        method: "post",
-        data: objcross
-      }).then(({data}) => {
-      });
-
       //更新跨表属性
       var crossuserid;
       var crossrefid;

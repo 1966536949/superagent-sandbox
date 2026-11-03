@@ -21,6 +21,11 @@ import java.util.Map;
  */
 public interface ToupiaohuodongDao extends BaseMapper<ToupiaohuodongEntity> {
 
+    /**
+     * 查询活动并锁定该行，用于串行化同一活动的投票
+     */
+    ToupiaohuodongEntity selectByIdForUpdate(@Param("id") Long id);
+
     List<ToupiaohuodongVO> selectListVO(@Param("ew") Wrapper<ToupiaohuodongEntity> wrapper);
 
     ToupiaohuodongVO selectVO(@Param("ew") Wrapper<ToupiaohuodongEntity> wrapper);
