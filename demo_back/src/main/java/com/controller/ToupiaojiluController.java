@@ -131,6 +131,11 @@ public class ToupiaojiluController {
      * 查重、加票和写入记录都在同一个事务中，加票或写记录失败会一起回滚。
      */
     private R saveVote(ToupiaojiluEntity toupiaojilu, HttpServletRequest request) {
+        Integer piaoshu = toupiaojilu.getPiaoshu();
+        if (piaoshu != null && piaoshu < 0) {
+            // 票数必须是整数计数，负数直接拒绝，避免写入数据库时报 500
+            return R.error("票数不能为负数");
+        }
         Long crossuserid = toupiaojilu.getCrossuserid();
         Long crossrefid = toupiaojilu.getCrossrefid();
         ToupiaohuodongEntity toupiaohuodong = null;
