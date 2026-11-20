@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -122,5 +123,44 @@ class ToupiaojiluControllerTest {
         assertEquals(Integer.valueOf(500), result.get("code"));
         assertEquals("您已参与过投票！", result.get("msg"));
         verify(toupiaojiluService, never()).insert(any());
+    }
+
+    @Test
+    void negativePiaoshuIsRejectedBeforeAnyWrite() {
+        ToupiaojiluEntity vote = vote(1L, 2L);
+        vote.setPiaoshu(-1);
+
+        R result = controller.save(vote, request);
+
+        assertEquals(Integer.valueOf(500), result.get("code"));
+        assertEquals("票数不能为负数", result.get("msg"));
+        verifyNoInteractions(toupiaohuodongService);
+        verifyNoInteractions(toupiaojiluService);
+    }
+
+    @Test
+    void negativePiaoshuOnAddEndpointIsRejected() {
+        ToupiaojiluEntity vote = vote(1L, 2L);
+        vote.setPiaoshu(-5);
+
+        R result = controller.add(vote, request);
+
+        assertEquals(Integer.valueOf(500), result.get("code"));
+        assertEquals("票数不能为负数", result.get("msg"));
+        verifyNoInteractions(toupiaohuodongService);
+        verifyNoInteractions(toupiaojiluService);
+    }
+
+    @Test
+    void zeroPiaoshuIsStillAccepted() {
+        when(toupiaojiluService.selectCount(any())).thenReturn(0);
+        when(toupiaohuodongService.selectByIdForUpdate(2L)).thenReturn(activity(2L, 5));
+        when(toupiaohuodongService.updateById(any())).thenReturn(true);
+        when(toupiaojiluService.insert(any())).thenReturn(true);
+
+        R result = controller.save(vote(1L, 2L), request);
+
+        assertEquals(Integer.valueOf(0), result.get("code"));
+        verify(toupiaojiluService).insert(any(ToupiaojiluEntity.class));
     }
 }
